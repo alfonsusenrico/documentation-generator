@@ -1,0 +1,281 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+service_name="docgen"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+binary_path="${script_dir}/docgen"
+env_file="${script_dir}/.env"
+systemd_dir="${HOME}/.config/systemd/user"
+service_file="${systemd_dir}/${service_name}.service"
+
+if [[ ! -f "$env_file" ]]; then
+  echo "Missing .env file at ${env_file}" >&2
+  exit 1
+fi
+
+read_env_value() {
+  local key="$1"
+  local line
+  line="$(grep -E "^${key}=" "$env_file" | tail -n1 || true)"
+  echo "${line#*=}"
+}
+
+command_exists() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+detect_pkg_manager() {
+  if command_exists apt-get; then
+    echo "apt-get"
+  elif command_exists dnf; then
+    echo "dnf"
+  elif command_exists yum; then
+    echo "yum"
+  elif command_exists pacman; then
+    echo "pacman"
+  elif command_exists apk; then
+    echo "apk"
+  elif command_exists zypper; then
+    echo "zypper"
+  elif command_exists brew; then
+    echo "brew"
+  else
+    echo ""
+  fi
+}
+
+add_pkg() {
+  local pkg="$1"
+  if [[ " ${install_pkgs[*]} " != *" ${pkg} "* ]]; then
+    install_pkgs+=("$pkg")
+  fi
+}
+
+enable_pdf="$(read_env_value "ENABLE_PDF")"
+enable_pdf="${enable_pdf//[[:space:]]/}"
+
+missing_cmds=()
+for cmd in go git gh; do
+  if ! command_exists "$cmd"; then
+    missing_cmds+=("$cmd")
+  fi
+done
+if [[ "$enable_pdf" == "1" ]]; then
+  for cmd in pandoc xelatex; do
+    if ! command_exists "$cmd"; then
+      missing_cmds+=("$cmd")
+    fi
+  done
+fi
+
+if [[ ${#missing_cmds[@]} -gt 0 ]]; then
+  pm="$(detect_pkg_manager)"
+  if [[ -z "$pm" ]]; then
+    echo "Missing dependencies: ${missing_cmds[*]}" >&2
+    echo "No supported package manager found. Install them manually and re-run." >&2
+    exit 1
+  fi
+
+  install_pkgs=()
+  case "$pm" in
+    apt-get)
+      [[ " ${missing_cmds[*]} " == *" go "* ]] && add_pkg "golang-go"
+      [[ " ${missing_cmds[*]} " == *" git "* ]] && add_pkg "git"
+      [[ " ${missing_cmds[*]} " == *" gh "* ]] && add_pkg "gh"
+      [[ " ${missing_cmds[*]} " == *" pandoc "* ]] && add_pkg "pandoc"
+      if [[ " ${missing_cmds[*]} " == *" xelatex "* ]]; then
+        add_pkg "texlive-xetex"
+        add_pkg "texlive-latex-base"
+        add_pkg "texlive-latex-recommended"
+        add_pkg "texlive-fonts-recommended"
+        add_pkg "lmodern"
+        add_pkg "fonts-dejavu"
+      fi
+      install_cmd="sudo apt-get update && sudo apt-get install -y ${install_pkgs[*]}"
+      ;;
+    dnf|yum)
+      [[ " ${missing_cmds[*]} " == *" go "* ]] && add_pkg "golang"
+      [[ " ${missing_cmds[*]} " == *" git "* ]] && add_pkg "git"
+      [[ " ${missing_cmds[*]} " == *" gh "* ]] && add_pkg "gh"
+      [[ " ${missing_cmds[*]} " == *" pandoc "* ]] && add_pkg "pandoc"
+      if [[ " ${missing_cmds[*]} " == *" xelatex "* ]]; then
+        add_pkg "texlive-xetex"
+        add_pkg "texlive-collection-latex"
+        add_pkg "texlive-collection-latexrecommended"
+        add_pkg "texlive-collection-fontsrecommended"
+      fi
+      install_cmd="sudo ${pm} install -y ${install_pkgs[*]}"
+      ;;
+    pacman)
+      [[ " ${missing_cmds[*]} " == *" go "* ]] && add_pkg "go"
+      [[ " ${missing_cmds[*]} " == *" git "* ]] && add_pkg "git"
+      [[ " ${missing_cmds[*]} " == *" gh "* ]] && add_pkg "github-cli"
+      [[ " ${missing_cmds[*]} " == *" pandoc "* ]] && add_pkg "pandoc"
+      if [[ " ${missing_cmds[*]} " == *" xelatex "* ]]; then
+        add_pkg "texlive-core"
+        add_pkg "texlive-latexextra"
+        add_pkg "ttf-dejavu"
+      fi
+      install_cmd="sudo pacman -Syu --needed ${install_pkgs[*]}"
+      ;;
+    apk)
+      [[ " ${missing_cmds[*]} " == *" go "* ]] && add_pkg "go"
+      [[ " ${missing_cmds[*]} " == *" git "* ]] && add_pkg "git"
+      [[ " ${missing_cmds[*]} " == *" gh "* ]] && add_pkg "github-cli"
+      [[ " ${missing_cmds[*]} " == *" pandoc "* ]] && add_pkg "pandoc"
+      if [[ " ${missing_cmds[*]} " == *" xelatex "* ]]; then
+        add_pkg "texlive-full"
+        add_pkg "fontconfig"
+        add_pkg "ttf-dejavu"
+      fi
+      install_cmd="sudo apk add --no-cache ${install_pkgs[*]}"
+      ;;
+    zypper)
+      [[ " ${missing_cmds[*]} " == *" go "* ]] && add_pkg "go"
+      [[ " ${missing_cmds[*]} " == *" git "* ]] && add_pkg "git"
+      [[ " ${missing_cmds[*]} " == *" gh "* ]] && add_pkg "gh"
+      [[ " ${missing_cmds[*]} " == *" pandoc "* ]] && add_pkg "pandoc"
+      if [[ " ${missing_cmds[*]} " == *" xelatex "* ]]; then
+        add_pkg "texlive-xetex"
+        add_pkg "texlive-collection-latexrecommended"
+        add_pkg "texlive-collection-fontsrecommended"
+        add_pkg "texlive-lm"
+      fi
+      install_cmd="sudo zypper install -y ${install_pkgs[*]}"
+      ;;
+    brew)
+      [[ " ${missing_cmds[*]} " == *" go "* ]] && add_pkg "go"
+      [[ " ${missing_cmds[*]} " == *" git "* ]] && add_pkg "git"
+      [[ " ${missing_cmds[*]} " == *" gh "* ]] && add_pkg "gh"
+      [[ " ${missing_cmds[*]} " == *" pandoc "* ]] && add_pkg "pandoc"
+      if [[ " ${missing_cmds[*]} " == *" xelatex "* ]]; then
+        add_pkg "mactex-no-gui"
+      fi
+      install_cmd="brew install ${install_pkgs[*]}"
+      ;;
+  esac
+
+  echo "Missing dependencies: ${missing_cmds[*]}"
+  echo "Install command:"
+  echo "  $install_cmd"
+
+  if [[ -t 0 ]]; then
+    read -r -p "Install now? [y/N] " answer
+  else
+    answer="n"
+  fi
+
+  if [[ "$answer" =~ ^[Yy]$ ]]; then
+    eval "$install_cmd"
+  else
+    echo "Install skipped. Re-run after installing dependencies." >&2
+    exit 1
+  fi
+
+  missing_cmds=()
+  for cmd in go git gh; do
+    if ! command_exists "$cmd"; then
+      missing_cmds+=("$cmd")
+    fi
+  done
+  if [[ "$enable_pdf" == "1" ]]; then
+    for cmd in pandoc xelatex; do
+      if ! command_exists "$cmd"; then
+        missing_cmds+=("$cmd")
+      fi
+    done
+  fi
+  if [[ ${#missing_cmds[@]} -gt 0 ]]; then
+    echo "Still missing: ${missing_cmds[*]}" >&2
+    exit 1
+  fi
+fi
+
+if ! command -v systemctl >/dev/null 2>&1; then
+  echo "systemctl is required to register a service." >&2
+  exit 1
+fi
+
+if command_exists gh; then
+  if ! gh auth status >/dev/null 2>&1; then
+    if [[ -t 0 ]]; then
+      read -r -p "gh is not authenticated. Run 'gh auth login' now? [y/N] " answer
+      if [[ "$answer" =~ ^[Yy]$ ]]; then
+        gh auth login
+      else
+        echo "gh auth required. Run 'gh auth login' and re-run this script." >&2
+        exit 1
+      fi
+    else
+      echo "gh auth required. Run 'gh auth login' and re-run this script." >&2
+      exit 1
+    fi
+    if ! gh auth status >/dev/null 2>&1; then
+      echo "gh auth failed or incomplete. Re-run after authentication." >&2
+      exit 1
+    fi
+  fi
+fi
+
+git_name="$(git config --global user.name 2>/dev/null || true)"
+git_email="$(git config --global user.email 2>/dev/null || true)"
+if [[ -z "$git_name" || -z "$git_email" ]]; then
+  if [[ -t 0 ]]; then
+    if [[ -z "$git_name" ]]; then
+      read -r -p "Global git user.name is missing. Enter name: " git_name
+    fi
+    if [[ -z "$git_email" ]]; then
+      read -r -p "Global git user.email is missing. Enter email: " git_email
+    fi
+    if [[ -z "$git_name" || -z "$git_email" ]]; then
+      echo "Git identity is required. Re-run and provide both name and email." >&2
+      exit 1
+    fi
+    git config --global user.name "$git_name"
+    git config --global user.email "$git_email"
+  else
+    echo "Global git identity missing. Run:" >&2
+    echo "  git config --global user.name \"Your Name\"" >&2
+    echo "  git config --global user.email \"you@example.com\"" >&2
+    exit 1
+  fi
+fi
+
+echo "Building server..."
+(
+  cd "$script_dir"
+  go build -o "$binary_path" .
+)
+
+mkdir -p "$systemd_dir"
+
+cat >"$service_file" <<EOF
+[Unit]
+Description=Documentation Generator
+After=network.target
+
+[Service]
+WorkingDirectory=$script_dir
+EnvironmentFile=$env_file
+ExecStart=$binary_path
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+EOF
+
+systemctl --user daemon-reload
+systemctl --user enable --now "$service_name"
+
+echo "Service installed and started: $service_name"
+echo "Status:"
+systemctl --user status "$service_name" --no-pager
+
+cat <<EOF
+
+Logs:
+  journalctl --user -u $service_name -f
+
+If you want it to start at boot without login:
+  loginctl enable-linger $USER
+EOF

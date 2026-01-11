@@ -1,0 +1,144 @@
+<!-- public/index.html -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Proposal Generator</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="hero">
+        <div class="hero-text">
+          <div class="eyebrow">DocGen / Proposal</div>
+          <h1 class="title">Proposal Generator</h1>
+          <p class="subtitle">Turn rough notes into a client-ready proposal, then initialize the repo in one click.</p>
+        </div>
+        <div class="hero-meta">
+          <span class="pill">Local server</span>
+          <span class="pill">Markdown + PDF</span>
+          <span class="pill">Project init</span>
+        </div>
+      </header>
+
+      <main class="shell">
+        <section class="card input-card delay-1">
+          <div class="card-head">
+            <div>
+              <h2>Project Details</h2>
+              <p class="muted">Fill what you know. Missing details become TBD.</p>
+            </div>
+            <div class="stepper">
+              <div class="step"><span>1</span>Paste plan</div>
+              <div class="step"><span>2</span>Generate</div>
+              <div class="step"><span>3</span>Download</div>
+              <div class="step"><span>4</span>Initiate</div>
+            </div>
+          </div>
+
+          <div class="row">
+            <label class="field">
+              <span>Project name</span>
+              <input id="projectName" placeholder="Project name (optional)" />
+            </label>
+            <label class="field">
+              <span>Client / Owner</span>
+              <input id="clientOwner" placeholder="Client or owner (optional)" />
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Project plan</span>
+            <textarea id="plan" placeholder="Paste your project plan here..."></textarea>
+            <span class="hint">Tip: include scope, timeline, stack, risks, and deliverables.</span>
+          </label>
+
+          <div class="actions primary-actions">
+            <button id="gen" class="primary">Generate proposal</button>
+            <button id="clear" type="button" class="ghost">Clear</button>
+          </div>
+
+          <div class="actions secondary-actions">
+            <button id="dlMd" class="soft" disabled>Download Markdown</button>
+            <button id="dlPdf" class="soft" disabled>Download PDF</button>
+            <button id="copy" class="soft" disabled>Copy Markdown</button>
+          </div>
+
+          <div class="existing-block">
+            <div class="existing-head">
+              <div>
+                <h3>Existing Proposals</h3>
+                <p class="muted">Load a previous proposal without regenerating.</p>
+              </div>
+              <button id="refreshProposals" class="ghost small" type="button">Refresh</button>
+            </div>
+            <label class="field">
+              <span>Select proposal</span>
+              <select id="proposalSelect">
+                <option value="">Select a proposal...</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="init-block hidden" id="initBlock">
+            <div class="init-head">
+              <div>
+                <h3>Initiate Project</h3>
+                <p class="muted">Create repo + README in <code>~/project</code> from the approved proposal.</p>
+              </div>
+              <div class="badge">Requires proposal</div>
+            </div>
+
+            <div class="row">
+              <label class="field">
+                <span>Repo visibility</span>
+                <div class="segmented">
+                  <label class="segmented-item">
+                    <input type="radio" name="visibility" value="private" checked />
+                    <span>Private</span>
+                  </label>
+                  <label class="segmented-item">
+                    <input type="radio" name="visibility" value="public" />
+                    <span>Public</span>
+                  </label>
+                </div>
+              </label>
+              <label class="field">
+                <span>Init token (optional)</span>
+                <input id="initToken" placeholder="INIT_TOKEN if required" />
+              </label>
+            </div>
+
+            <div class="actions">
+              <button id="initProject" class="accent" disabled>Initiate project</button>
+            </div>
+
+            <pre id="initOutput" class="init-output"></pre>
+          </div>
+
+          <div id="status" class="status"></div>
+        </section>
+
+        <section class="card preview-card delay-2">
+          <div class="card-head">
+            <div>
+              <h2>Preview</h2>
+              <p class="muted">Rendered output plus raw Markdown.</p>
+            </div>
+            <div class="tabs">
+              <button class="tab active" id="tabPreview" type="button">Preview</button>
+              <button class="tab" id="tabRaw" type="button">Raw</button>
+            </div>
+          </div>
+          <div class="content">
+            <div id="preview" class="md"></div>
+            <pre id="raw" class="raw" style="display:none;"></pre>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
