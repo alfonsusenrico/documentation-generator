@@ -1,0 +1,55 @@
+name: Deploy Production
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message || '', '[skip ci]') }}
+    environment: production
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -e
+            cd {{DEPLOY_PATH_PROD}}
+            NEW_TAG=sha-${{ github.sha }}
+            mkdir -p "$(dirname {{DEPLOY_LOG_PATH}})" "$(dirname {{METRICS_LOG_PATH}})"
+            WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            if ! grep -q '^IMAGE_NAME=' .env; then
+              echo 'IMAGE_NAME={{IMAGE_NAME}}' >> .env
+            fi
+            if grep -q '^IMAGE_TAG=' .env; then
+              sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${NEW_TAG}/" .env
+            else
+              echo "IMAGE_TAG=${NEW_TAG}" >> .env
+            fi
+            docker compose pull
+            docker compose up -d
+            if ! curl -fsS http://localhost:{{APP_PORT}}{{HEALTH_ENDPOINT}}; then
+              if [ -f .last_good ]; then
+                LAST_TAG="$(cat .last_good)"
+                sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${LAST_TAG}/" .env
+                docker compose up -d
+              fi
+              echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) production ${NEW_TAG} failure ${WORKFLOW_URL}" >> {{DEPLOY_LOG_PATH}}
+              printf '{"timestamp":"%s","env":"production","sha":"%s","result":"failure","run_id":"%s","workflow_url":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${NEW_TAG}" "${{ github.run_id }}" "${WORKFLOW_URL}" >> {{METRICS_LOG_PATH}}
+              exit 1
+            fi
+            echo "${NEW_TAG}" > .last_good
+            echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) production ${NEW_TAG} success ${WORKFLOW_URL}" >> {{DEPLOY_LOG_PATH}}
+            printf '{"timestamp":"%s","env":"production","sha":"%s","result":"success","run_id":"%s","workflow_url":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${NEW_TAG}" "${{ github.run_id }}" "${WORKFLOW_URL}" >> {{METRICS_LOG_PATH}}

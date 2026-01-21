@@ -1,0 +1,163 @@
+name: AI CI Failure Explainer
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: write
+
+jobs:
+  explain:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' && secrets.OPENAI_API_KEY != '' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Collect failure context
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          gh api /repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100 > jobs.json
+          python3 - <<'PY'
+          import json
+
+          data = json.load(open("jobs.json", "r", encoding="utf-8"))
+          jobs = data.get("jobs", [])
+          failed = [j for j in jobs if j.get("conclusion") == "failure"]
+
+          with open("failed_jobs.txt", "w", encoding="utf-8") as f:
+              for job in failed:
+                  f.write(str(job.get("id")) + "\n")
+
+          lines = []
+          for job in failed:
+              lines.append(f"Job: {job.get('name')} (id {job.get('id')})")
+              for step in job.get("steps", []):
+                  if step.get("conclusion") == "failure":
+                      lines.append(f"  - Failed step: {step.get('name')}")
+          if not lines:
+              lines.append("No failed job details found.")
+
+          with open("summary.txt", "w", encoding="utf-8") as f:
+              f.write("\n".join(lines))
+          PY
+
+          : > logs.txt
+          while read -r job_id; do
+            if [ -z "$job_id" ]; then
+              continue
+            fi
+            gh api /repos/$REPO/actions/jobs/$job_id/logs --output job-logs.zip || continue
+            unzip -p job-logs.zip >> logs.txt
+            echo "\n-----\n" >> logs.txt
+            rm -f job-logs.zip
+          done < failed_jobs.txt
+
+      - name: Generate AI explanation
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RUN_NAME: ${{ github.event.workflow_run.name }}
+          RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          def extract_text(resp):
+              if isinstance(resp, dict) and resp.get("output_text"):
+                  return resp["output_text"].strip()
+              texts = []
+              for item in resp.get("output", []) if isinstance(resp, dict) else []:
+                  for content in item.get("content", []):
+                      if content.get("type") == "output_text":
+                          texts.append(content.get("text", ""))
+              return "\n".join(texts).strip()
+
+          summary = open("summary.txt", "r", encoding="utf-8").read()
+          logs = open("logs.txt", "r", encoding="utf-8", errors="ignore").read()
+          logs = logs[-8000:]
+
+          instructions = """You are an engineering assistant. Explain a CI failure based on the provided job/step summary and log tail.
+
+Output Markdown with:
+1) What failed (bullets)
+2) Likely root causes (bullets)
+3) Suggested fixes (bullets)
+4) Next actions (short checklist)
+
+Keep it concise and do not invent errors beyond the provided context.
+"""
+
+          prompt = f"""Workflow: {os.getenv('RUN_NAME')}
+Conclusion: {os.getenv('RUN_CONCLUSION')}
+SHA: {os.getenv('RUN_SHA')}
+Run URL: {os.getenv('RUN_URL')}
+\nFailed Jobs/Steps:\n{summary}
+\nLog Tail (truncated):\n{logs}
+"""
+
+          payload = {
+              "model": os.getenv("OPENAI_MODEL") or "gpt-5-mini",
+              "instructions": instructions,
+              "input": prompt,
+          }
+
+          req = urllib.request.Request(
+              "https://api.openai.com/v1/responses",
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}",
+                  "Content-Type": "application/json",
+              },
+          )
+          with urllib.request.urlopen(req) as resp:
+              data = json.loads(resp.read().decode("utf-8"))
+          text = extract_text(data)
+          if not text:
+              raise SystemExit("Empty AI response")
+
+          comment = "<!-- ai-ci-explainer -->\n" + text.strip() + "\n"
+          with open("comment.md", "w", encoding="utf-8") as f:
+              f.write(comment)
+          PY
+
+      - name: Locate pull request
+        id: find-pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          gh api /repos/$REPO/commits/$SHA/pulls > prs.json
+          pr=$(jq -r '.[0].number // empty' prs.json)
+          echo "pr_number=$pr" >> $GITHUB_OUTPUT
+
+      - name: Find existing explanation
+        if: ${{ steps.find-pr.outputs.pr_number != '' }}
+        id: find-comment
+        uses: peter-evans/find-comment@v3
+        with:
+          issue-number: ${{ steps.find-pr.outputs.pr_number }}
+          body-includes: "<!-- ai-ci-explainer -->"
+
+      - name: Create or update explanation
+        if: ${{ steps.find-pr.outputs.pr_number != '' }}
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ steps.find-pr.outputs.pr_number }}
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          body-file: comment.md
+          edit-mode: replace
+
+      - name: Add summary to workflow
+        if: ${{ steps.find-pr.outputs.pr_number == '' }}
+        run: cat comment.md >> "$GITHUB_STEP_SUMMARY"

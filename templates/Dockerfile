@@ -1,0 +1,16 @@
+# syntax=docker/dockerfile:1
+FROM {{DOCKER_BASE_IMAGE}} AS app
+
+WORKDIR /app
+
+{{DOCKER_COPY_DEPS}}
+{{DOCKER_INSTALL_STEP}}
+
+COPY . .
+
+{{DOCKER_BUILD_STEP}}
+
+ENV PORT={{APP_PORT}}
+EXPOSE {{APP_PORT}}
+
+CMD {{DOCKER_START_CMD}}

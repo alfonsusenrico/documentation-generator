@@ -1,0 +1,95 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message || '', '[skip ci]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            {{IMAGE_NAME}}:sha-${{ github.sha }}
+            {{IMAGE_NAME}}:latest
+      - name: Generate release notes (AI)
+        if: ${{ secrets.OPENAI_API_KEY != '' }}
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          RANGE_START: ${{ github.event.before }}
+          RANGE_END: ${{ github.sha }}
+        run: |
+          range="$RANGE_START..$RANGE_END"
+          if [ -z "$RANGE_START" ] || [ "$RANGE_START" = "0000000000000000000000000000000000000000" ]; then
+            range="$RANGE_END~20..$RANGE_END"
+          fi
+          git log "$range" --pretty=format:'- %s (%h)' > commits.txt
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          def extract_text(resp):
+              if isinstance(resp, dict) and resp.get("output_text"):
+                  return resp["output_text"].strip()
+              texts = []
+              for item in resp.get("output", []) if isinstance(resp, dict) else []:
+                  for content in item.get("content", []):
+                      if content.get("type") == "output_text":
+                          texts.append(content.get("text", ""))
+              return "\n".join(texts).strip()
+
+          commits = open("commits.txt", "r", encoding="utf-8").read().strip()
+          instructions = """You are an engineering assistant drafting release notes.
+
+Output Markdown with:
+1) Summary (2-4 bullets)
+2) Changes (bullets)
+3) Migration Notes (include 'None' if not applicable)
+4) Rollback Notes
+
+Use only the provided commit list. Keep it concise."""
+
+          prompt = f"Commit list:\\n{commits or 'No commits found.'}"
+          payload = {
+              "model": os.getenv("OPENAI_MODEL") or "gpt-5-mini",
+              "instructions": instructions,
+              "input": prompt,
+          }
+          req = urllib.request.Request(
+              "https://api.openai.com/v1/responses",
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}",
+                  "Content-Type": "application/json",
+              },
+          )
+          with urllib.request.urlopen(req) as resp:
+              data = json.loads(resp.read().decode("utf-8"))
+          text = extract_text(data)
+          if not text:
+              raise SystemExit("Empty AI response")
+
+          with open("release-notes.md", "w", encoding="utf-8") as f:
+              f.write(text.strip() + "\n")
+          PY
+          echo "## AI Release Notes" >> "$GITHUB_STEP_SUMMARY"
+          cat release-notes.md >> "$GITHUB_STEP_SUMMARY"

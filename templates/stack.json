@@ -1,0 +1,44 @@
+{
+  "python": {
+    "app_port": 8000,
+    "commands": {
+      "install": "python -m pip install -r requirements.txt",
+      "lint": "ruff check .",
+      "type": "mypy .",
+      "test": "pytest -q",
+      "test_integration": "pytest -q -m integration",
+      "build": "python -m build",
+      "scan": "pip-audit",
+      "start": "python -m app",
+      "migrate_check": "echo 'Configure migrate-check command for your stack.' && exit 1"
+    },
+    "docker": {
+      "base_image": "python:3.11-slim",
+      "copy_deps": "COPY requirements.txt ./",
+      "install_step": "RUN python -m pip install --no-cache-dir -r requirements.txt",
+      "build_step": "RUN true",
+      "start_cmd": "[\"python\",\"-m\",\"app\"]"
+    }
+  },
+  "node": {
+    "app_port": 3000,
+    "commands": {
+      "install": "npm ci",
+      "lint": "npm run lint",
+      "type": "npm run typecheck",
+      "test": "npm test -- --ci",
+      "test_integration": "npm run test:integration",
+      "build": "npm run build",
+      "scan": "npm audit --audit-level=high",
+      "start": "npm start",
+      "migrate_check": "echo 'Configure migrate-check command for your stack.' && exit 1"
+    },
+    "docker": {
+      "base_image": "node:20-alpine",
+      "copy_deps": "COPY package.json package-lock.json ./",
+      "install_step": "RUN npm ci --omit=dev",
+      "build_step": "RUN npm run build",
+      "start_cmd": "[\"npm\",\"start\"]"
+    }
+  }
+}

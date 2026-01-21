@@ -1,0 +1,121 @@
+name: AI PR Summary
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  summarize:
+    if: ${{ secrets.OPENAI_API_KEY != '' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Collect PR context
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr view "$PR_NUMBER" --json title,body,author,baseRefName,headRefName,number > pr.json
+          gh pr diff "$PR_NUMBER" --patch > diff.patch
+
+      - name: Generate AI summary
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import urllib.request
+
+          def extract_text(resp):
+              if isinstance(resp, dict) and resp.get("output_text"):
+                  return resp["output_text"].strip()
+              texts = []
+              for item in resp.get("output", []) if isinstance(resp, dict) else []:
+                  for content in item.get("content", []):
+                      if content.get("type") == "output_text":
+                          texts.append(content.get("text", ""))
+              return "\n".join(texts).strip()
+
+          pr = json.load(open("pr.json", "r", encoding="utf-8"))
+          diff = open("diff.patch", "r", encoding="utf-8", errors="ignore").read()
+
+          files = []
+          for line in diff.splitlines():
+              if line.startswith("diff --git "):
+                  parts = line.split(" ")
+                  if len(parts) >= 4:
+                      files.append(parts[2][2:])
+          files = sorted(set(files))
+
+          diff_trim = diff[:12000]
+          if len(diff) > len(diff_trim):
+              diff_trim += "\n... (truncated)"
+
+          instructions = """You are an engineering assistant. Summarize the PR and classify change risk.
+
+Output Markdown with these sections in order:
+1) Summary (3-5 bullets)
+2) Risk Level (Low/Medium/High) + 1-line rationale
+3) Impacted Areas (list modules/files)
+4) Suggested Test Plan (bullets)
+5) Release Notes Draft (user-facing + technical)
+6) Rollback Notes
+
+Rules:
+- Use only the provided PR info and diff.
+- If migrations or schema changes are detected, risk must be High and include migration plan note.
+- Keep it concise.
+"""
+
+          prompt = f"""PR Title: {pr.get('title','')}
+PR Author: {pr.get('author',{}).get('login','')}
+Base: {pr.get('baseRefName','')}  Head: {pr.get('headRefName','')}
+PR Body:\n{pr.get('body','') or 'N/A'}
+\nChanged Files:\n" + "\n".join(f"- {f}" for f in files) + "\n\nDiff (truncated):\n" + diff_trim
+
+          payload = {
+              "model": os.getenv("OPENAI_MODEL") or "gpt-5-mini",
+              "instructions": instructions,
+              "input": prompt,
+          }
+
+          req = urllib.request.Request(
+              "https://api.openai.com/v1/responses",
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}",
+                  "Content-Type": "application/json",
+              },
+          )
+          with urllib.request.urlopen(req) as resp:
+              data = json.loads(resp.read().decode("utf-8"))
+          text = extract_text(data)
+          if not text:
+              raise SystemExit("Empty AI response")
+
+          comment = "<!-- ai-pr-summary -->\n" + text.strip() + "\n"
+          with open("comment.md", "w", encoding="utf-8") as f:
+              f.write(comment)
+          PY
+
+      - name: Find existing summary
+        id: find-comment
+        uses: peter-evans/find-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: "<!-- ai-pr-summary -->"
+
+      - name: Create or update summary
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          body-file: comment.md
+          edit-mode: replace
