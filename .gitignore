@@ -20,7 +20,10 @@ Thumbs.db
 dist/
 build/
 node_modules/
-docgen
+/docgen
 
 # Generated artifacts
 out/
+
+# Allow source binaries folder
+!cmd/docgen/
