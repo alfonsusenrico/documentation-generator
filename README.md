@@ -76,7 +76,7 @@ bash start-server
 - Use **Existing Proposals** to load from `out/` without re-generating.
 
 ### Initiate a project
-- Select stack (python/node), tier (1/2), visibility, automation level, and deploy mode.
+- Select stack (python/node), tier (1/2), visibility, automation level, deploy mode, and artifact type.
 - Click **Initiate project**.
 - Preflight checks validate `gh` auth, git identity, repo name, and target path.
 - The system creates `~/project/<client>/<project>`, commits with `[skip ci]`, and pushes `main` + `dev` branches.
@@ -112,7 +112,7 @@ For chat/assistant orchestration without the UI:
 
 - `POST /api/agent/init`
   - Headers: `Content-Type: application/json`, `X-Agent-Token: <AGENT_TOKEN>`
-  - Body: `{ "proposal_id": "...", "visibility": "private|public", "stack": "python|node", "tier": "1|2", "automation_level": "repo_only|repo_ci|repo_ci_cd", "deploy_mode": "none|ssh_compose", "meta": { ... } }`
+  - Body: `{ "proposal_id": "...", "visibility": "private|public", "stack": "python|node", "tier": "1|2", "automation_level": "repo_only|repo_ci|repo_ci_cd", "deploy_mode": "none|ssh_compose", "artifact_type": "docker|binary|package|none", "meta": { ... } }`
 
 ## Data & Cleanup
 - Generated proposals are saved in `out/`.

@@ -28,6 +28,7 @@ type Request struct {
 	Visibility      string
 	AutomationLevel string
 	DeployMode      string
+	ArtifactType    string
 	GithubOwner     string
 	PreparedBy      string
 	Reporter        progress.Reporter
@@ -87,6 +88,12 @@ func (g *Generator) Generate(req Request) (Result, error) {
 	if req.DeployMode != "none" && req.DeployMode != "ssh_compose" {
 		return Result{}, fmt.Errorf("deploy_mode must be none or ssh_compose")
 	}
+	if req.ArtifactType == "" {
+		req.ArtifactType = "docker"
+	}
+	if req.ArtifactType != "docker" && req.ArtifactType != "binary" && req.ArtifactType != "package" && req.ArtifactType != "none" {
+		return Result{}, fmt.Errorf("artifact_type must be docker, binary, package, or none")
+	}
 	stackCfg, err := g.Stacks.Get(req.Stack)
 	if err != nil {
 		return Result{}, err
@@ -131,10 +138,24 @@ func (g *Generator) Generate(req Request) (Result, error) {
 	meta["tier"] = req.Tier
 	meta["automation_level"] = req.AutomationLevel
 	meta["deploy_mode"] = req.DeployMode
+	meta["artifact_type"] = req.ArtifactType
 
 	values := buildValues(projectName, clientName, repoName, repoURL, imageName, stackCfg)
 	values["AUTOMATION_LEVEL"] = req.AutomationLevel
 	values["DEPLOY_MODE"] = req.DeployMode
+	values["ARTIFACT_TYPE"] = req.ArtifactType
+	values["ARTIFACT_PATH"] = "TBD"
+	values["DEPLOY_SECRETS_BLOCK"] = "- No deployment secrets required (deploy_mode=none)."
+	if req.DeployMode == "ssh_compose" {
+		values["DEPLOY_SECRETS_BLOCK"] = strings.Join([]string{
+			"- SSH_HOST",
+			"- SSH_USER",
+			"- SSH_KEY",
+			"- SSH_PORT",
+			"- DEPLOY_PATH_STAGING",
+			"- DEPLOY_PATH_PRODUCTION",
+		}, "\n")
+	}
 	values["STATUS_SLUG"] = "pre--development"
 	values["STATUS_COLOR"] = "blue"
 	values["CLONE_COMMAND"] = "git clone " + repoURL + "\ncd " + repoName
@@ -192,6 +213,10 @@ func (g *Generator) Generate(req Request) (Result, error) {
 		return Result{}, err
 	}
 	files, err = g.addDeterministic(files, "automation/AUTOMATION.md", "docs/AUTOMATION.md", values)
+	if err != nil {
+		return Result{}, err
+	}
+	files, err = g.addDeterministic(files, "automation/SECRETS_REQUIRED.md", "docs/SECRETS_REQUIRED.md", values)
 	if err != nil {
 		return Result{}, err
 	}

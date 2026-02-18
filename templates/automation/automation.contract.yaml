@@ -19,8 +19,9 @@ ci:
     command: "{{DEP_AUDIT_CMD}}"
 
 artifact:
-  type: docker
+  type: {{ARTIFACT_TYPE}}
   image: {{IMAGE_NAME}}
+  path: {{ARTIFACT_PATH}}
   tag_strategy: sha
 
 policies:

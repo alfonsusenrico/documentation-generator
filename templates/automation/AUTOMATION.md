@@ -17,9 +17,14 @@
 - `repo_ci`: scaffold + CI workflows, no deploy workflows.
 - `repo_ci_cd`: scaffold + CI + CD workflows (when deploy mode is enabled).
 
+## Artifact
+- Type: `{{ARTIFACT_TYPE}}`
+- Image: `{{IMAGE_NAME}}`
+- Path: `{{ARTIFACT_PATH}}`
+
 ## Deploy
 - If deploy mode is `none`, deploy workflows are not generated.
-- If deploy mode is `ssh_compose`, staging/production workflows are generated (manual environment protection is still required).
+- If deploy mode is `ssh_compose`, staging/production workflows are generated in manual-first mode (workflow_dispatch) and environment protection is still required.
 
 ## Required Manual Configuration
 - Repository branch protection rules.

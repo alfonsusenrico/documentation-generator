@@ -62,6 +62,7 @@ type initReq struct {
 	Tier            string                 `json:"tier"`
 	AutomationLevel string                 `json:"automation_level"`
 	DeployMode      string                 `json:"deploy_mode"`
+	ArtifactType    string                 `json:"artifact_type"`
 	Meta            map[string]interface{} `json:"meta"`
 }
 
@@ -600,6 +601,14 @@ func (s *Server) normalizeInitRequest(req *initReq) error {
 		return apiError{Status: http.StatusBadRequest, Message: "automation_level must be repo_only, repo_ci, or repo_ci_cd"}
 	}
 
+	req.ArtifactType = strings.ToLower(strings.TrimSpace(req.ArtifactType))
+	if req.ArtifactType == "" {
+		req.ArtifactType = "docker"
+	}
+	if req.ArtifactType != "docker" && req.ArtifactType != "binary" && req.ArtifactType != "package" && req.ArtifactType != "none" {
+		return apiError{Status: http.StatusBadRequest, Message: "artifact_type must be docker, binary, package, or none"}
+	}
+
 	req.DeployMode = strings.ToLower(strings.TrimSpace(req.DeployMode))
 	if req.DeployMode == "" {
 		req.DeployMode = "none"
@@ -658,6 +667,7 @@ func (s *Server) initProject(req initReq, reporter progress.Reporter) (initResp,
 		Visibility:      req.Visibility,
 		AutomationLevel: req.AutomationLevel,
 		DeployMode:      req.DeployMode,
+		ArtifactType:    req.ArtifactType,
 		GithubOwner:     owner,
 		PreparedBy:      s.cfg.PreparedBy,
 		Reporter:        reporter,
