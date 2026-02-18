@@ -15,9 +15,9 @@
 {{PROBLEM_CONTEXT}}
 
 ## 3) Goals (Success Criteria)
-- {{GOAL_1}}
-- {{GOAL_2}}
-- {{GOAL_3}}
+- {{GOAL_1}} (Metric: {{GOAL_1_METRIC}})
+- {{GOAL_2}} (Metric: {{GOAL_2_METRIC}})
+- {{GOAL_3}} (Metric: {{GOAL_3_METRIC}})
 
 ## 4) Constraints
 - {{CONSTRAINT_1}}
@@ -32,6 +32,8 @@
 - Data: {{DATA_STACK}}
 - Deployment: {{DEPLOYMENT_STACK}}
 
+## 5.2) Decision Rationale
+{{DECISION_RATIONALE}}
 
 ## 6) Scope
 ### In Scope
@@ -71,7 +73,12 @@
 - {{COST_ASSUMPTION_1}}
 - {{COST_ASSUMPTION_2}}
 
-## 11) Risks & Dependencies
+## 11) Assumption Register
+- {{ASSUMPTION_1}}
+- {{ASSUMPTION_2}}
+- {{ASSUMPTION_3}}
+
+## 12) Risks & Dependencies
 **Risks:**
 - {{RISK_1}} → {{MITIGATION_1}}
 - {{RISK_2}} → {{MITIGATION_2}}
@@ -80,19 +87,24 @@
 - {{DEPENDENCY_1}}
 - {{DEPENDENCY_2}}
 
-## 12) Ownership & Access
+## 13) Open Questions (Need Confirmation)
+- {{OPEN_QUESTION_1}}
+- {{OPEN_QUESTION_2}}
+- {{OPEN_QUESTION_3}}
+
+## 14) Ownership & Access
 - Source code ownership: {{OWNERSHIP}} 
 - Access needed (keys/repos/servers): {{ACCESS_NEEDED}}
 - Handoff (walkthrough/docs/deploy): {{HANDOFF}}
 
-## 13) Optional (Include only if applicable)
+## 15) Optional (Include only if applicable)
 ### Support & Maintenance
 - {{SUPPORT_MAINTENANCE}}
 
 ### Security & Privacy
 - {{SECURITY_PRIVACY_NOTE}}
 
-## 14) Next Steps
+## 16) Next Steps
 - {{NEXT_STEP_1}}
 - {{NEXT_STEP_2}}
 - {{NEXT_STEP_3}}

@@ -48,25 +48,32 @@ func (c *Client) GenerateProposal(template string, meta map[string]interface{}, 
 	}
 
 	instructions := strings.Join([]string{
-		"You generate a client-readable project proposal in Markdown.",
+		"You generate a client-ready project proposal in Markdown.",
 		"Follow the provided template EXACTLY (same headings/order AND same Markdown formatting). Do not add, remove, rename, or reorder sections.",
-		"Formatting rule: Match the template formatting exactly (same bold labels like **Client/Owner:**, same bullet list style, and the same table format). Do not convert required bullet lists into paragraphs.",
-		"Keep template labels/headings in English exactly as provided; only the body content follows the requested language.",
+		"Formatting rule: Match template formatting exactly (bold labels, bullet style, table style). Do not convert required bullet lists into paragraphs.",
+		"Keep template labels/headings in English exactly as provided; only body content follows requested language.",
 		langRule,
+
+		"Transformation rule: Do not mirror raw draft wording. Convert rough notes into concise professional statements with clearer structure and intent.",
+		"Reasoning rule: Perform an internal 2-pass process before writing: (1) extract goals, constraints, dependencies, risks, unknowns; (2) compose the final proposal with consistent cross-section logic. Do not output analysis steps.",
+		"Consistency rule: Ensure Goals, Scope, Timeline, Deliverables, Acceptance Criteria, and Risks are logically aligned. If one section changes, keep others coherent.",
+		"Quality rule: Every goal must have measurable success metric; every risk must include practical mitigation; acceptance criteria must be testable.",
 
 		"Tone rule: Use professional neutral voice. Avoid first-person pronouns (I/we/our/me/my) and Indonesian equivalents (saya/kami/kita/aku). Write in third-person as a project document.",
 
-		"Header rule: The header block (Project name, Client/Owner, Prepared by, Date, Version) MUST use META values when present. Do not output 'TBD' if META has a non-empty value.",
-		"Replacement rule: Use META + PROJECT PLAN to fill every placeholder. If information is missing, write 'TBD' (never guess).",
-		"Defaults rule: Date must use meta.date; Version must use meta.version; Client/Owner must use meta.client_or_owner; Prepared by must use meta.your_name. These are provided values, not guesses.",
+		"Header rule: Header fields MUST use META values when present. Do not output 'TBD' for non-empty META fields.",
+		"Defaults rule: Date=meta.date; Version=meta.version; Client/Owner=meta.client_or_owner; Prepared by=meta.your_name.",
+		"Replacement rule: Fill placeholders using META + PROJECT PLAN. If truly unknown, use 'TBD'.",
 
-		"Truthfulness rule: Do not invent calendar dates, prices, integrations, performance claims, or dependencies not present in META/PLAN. Relative timeline labels (Day 1-3, Week 1-2) are allowed.",
-		"Timeline rule: Prefer relative schedule labels explicitly mentioned in the plan (e.g., Day 1/Day 2/Week 1). If the plan implies phases but lacks dates, fill Target date with reasonable relative durations (Day 1-3 or Week 1-3) instead of 'TBD'. Only use calendar dates if they appear in META/PLAN.",
+		"Truthfulness rule: Do not invent calendar dates, prices, integrations, performance claims, or dependencies not supported by META/PLAN.",
+		"Inference rule: Safe professional inference is allowed only when strongly implied by the draft; do not fabricate specifics.",
+		"Timeline rule: Prefer relative schedule labels from plan. If implied but no exact dates, use realistic relative windows (Day 1-3, Week 1-3).",
+		"Open questions rule: Put unresolved critical gaps into 'Open Questions (Need Confirmation)' instead of forcing weak assumptions.",
+		"Assumption register rule: Include only high-impact assumptions that influence cost, timeline, or delivery outcome.",
 		pdfRule,
-		"Ownership rule: If 'Ownership' is not specified in META/PLAN, default Source code ownership to meta.your_name for personal/internal projects; otherwise use meta.client_or_owner.",
-		"Length rule: aim for ~1 page; hard maximum 2 pages. If content grows, compress wording and reduce bullet counts while keeping the template structure and required sections.",
-		"Hard length rule: The proposal MUST fit within 2 PDF pages on A4 at 11pt, margin 18mm, line-spacing 1.5. If needed, shorten paragraphs and keep lists to max 3 bullets per section.",
-		"Output ONLY the completed proposal in Markdown (no code fences, no commentary).",
+		"Ownership rule: If ownership is not specified, default Source code ownership to meta.your_name for personal/internal projects; otherwise use meta.client_or_owner.",
+		"Length rule: Target ~1 page, hard max 2 pages in PDF constraints; compress wording when needed without losing key decisions.",
+		"Output ONLY the completed proposal Markdown (no code fences, no commentary).",
 	}, "\n")
 
 	metaJSON, _ := json.MarshalIndent(meta, "", "  ")
