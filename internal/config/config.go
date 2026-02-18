@@ -26,6 +26,7 @@ type Config struct {
 	PreparedBy    string
 	EnablePDF     bool
 	InitToken     string
+	AgentToken    string
 	GithubOwner   string
 	GitUserName   string
 	GitUserEmail  string
@@ -57,6 +58,7 @@ func Load() Config {
 		PreparedBy:    strings.TrimSpace(os.Getenv("PREPARED_BY")),
 		EnablePDF:     strings.TrimSpace(os.Getenv("ENABLE_PDF")) == "1",
 		InitToken:     strings.TrimSpace(os.Getenv("INIT_TOKEN")),
+		AgentToken:    strings.TrimSpace(os.Getenv("AGENT_TOKEN")),
 		GithubOwner:   strings.TrimSpace(os.Getenv("GITHUB_OWNER")),
 		GitUserName:   strings.TrimSpace(os.Getenv("GIT_USER_NAME")),
 		GitUserEmail:  strings.TrimSpace(os.Getenv("GIT_USER_EMAIL")),

@@ -91,6 +91,8 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/init/stream", s.handleInitStream)
 	mux.HandleFunc("/api/proposals", s.handleProposals)
 	mux.HandleFunc("/api/proposals/", s.handleProposalDetail)
+	mux.HandleFunc("/api/agent/proposal", s.handleAgentProposal)
+	mux.HandleFunc("/api/agent/init", s.handleAgentInit)
 	mux.HandleFunc("/download/", s.handleDownload)
 }
 
@@ -480,6 +482,90 @@ func (s *Server) handleInitStream(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = stream.Send(streamEvent{Type: "result", Data: resp})
+}
+
+func (s *Server) handleAgentProposal(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	if !s.authorizeAgentRequest(w, r) {
+		return
+	}
+
+	var req proposalReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	req.Plan = strings.TrimSpace(req.Plan)
+	if req.Plan == "" {
+		writeJSONError(w, http.StatusBadRequest, "missing plan")
+		return
+	}
+	resp, err := s.generateProposal(req, nil)
+	if err != nil {
+		if apiErr, ok := asAPIError(err); ok {
+			writeJSONError(w, apiErr.Status, apiErr.Message)
+			return
+		}
+		writeJSONError(w, http.StatusInternalServerError, "proposal failed")
+		return
+	}
+
+	log.Printf("agent_proposal_ok id=%s", resp.ID)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+func (s *Server) handleAgentInit(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	if !s.authorizeAgentRequest(w, r) {
+		return
+	}
+
+	var req initReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if err := s.normalizeInitRequest(&req); err != nil {
+		if apiErr, ok := asAPIError(err); ok {
+			writeJSONError(w, apiErr.Status, apiErr.Message)
+			return
+		}
+		writeJSONError(w, http.StatusBadRequest, "invalid init request")
+		return
+	}
+
+	resp, err := s.initProject(req, nil)
+	if err != nil {
+		if apiErr, ok := asAPIError(err); ok {
+			writeJSONError(w, apiErr.Status, apiErr.Message)
+			return
+		}
+		writeJSONError(w, http.StatusInternalServerError, "init failed")
+		return
+	}
+
+	log.Printf("agent_init_ok repo=%s path=%s", resp.RepoName, resp.ProjectPath)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+func (s *Server) authorizeAgentRequest(w http.ResponseWriter, r *http.Request) bool {
+	if s.cfg.AgentToken == "" {
+		writeJSONError(w, http.StatusForbidden, "agent api disabled: AGENT_TOKEN not set")
+		return false
+	}
+	if r.Header.Get("X-Agent-Token") != s.cfg.AgentToken {
+		writeJSONError(w, http.StatusUnauthorized, "invalid agent token")
+		return false
+	}
+	return true
 }
 
 func (s *Server) normalizeInitRequest(req *initReq) error {

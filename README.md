@@ -61,6 +61,7 @@ bash start-server
 | PREPARED_BY | no | Alfonsus Enrico | Proposal header default |
 | ENABLE_PDF | no | 1 | Enable PDF output via pandoc |
 | INIT_TOKEN | no | some-token | Optional header token for `/api/init` |
+| AGENT_TOKEN | no | some-token | Required to enable `/api/agent/*` endpoints (use header `X-Agent-Token`) |
 | GITHUB_OWNER | no | alfonsusenrico | GitHub owner/org slug |
 | GIT_USER_NAME | no | Enrico | Optional git identity override |
 | GIT_USER_EMAIL | no | you@example.com | Optional git identity override |
@@ -102,6 +103,17 @@ bash start-server
 4) Implement a minimal `/health` endpoint and structured logging.
 5) Configure `make migrate-check` when migrations are introduced.
 
+## Agent Automation Endpoints
+For chat/assistant orchestration without the UI:
+
+- `POST /api/agent/proposal`
+  - Headers: `Content-Type: application/json`, `X-Agent-Token: <AGENT_TOKEN>`
+  - Body: `{ "plan": "...", "meta": { ... } }`
+
+- `POST /api/agent/init`
+  - Headers: `Content-Type: application/json`, `X-Agent-Token: <AGENT_TOKEN>`
+  - Body: `{ "proposal_id": "...", "visibility": "private|public", "stack": "python|node", "tier": "1|2", "meta": { ... } }`
+
 ## Data & Cleanup
 - Generated proposals are saved in `out/`.
 - Files are cleaned 30 minutes after a download.
@@ -109,6 +121,7 @@ bash start-server
 ## Security
 - API keys remain server-side.
 - For remote access, use Cloudflare Access and/or set `INIT_TOKEN`.
+- Agent endpoints are disabled unless `AGENT_TOKEN` is configured.
 
 ## Project Structure
 - `cmd/docgen/main.go` — server bootstrap
