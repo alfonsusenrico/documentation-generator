@@ -1,0 +1,15 @@
+services:
+  docgen:
+    build: .
+    container_name: docgen
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: "8001"
+    ports:
+      - "127.0.0.1:8001:8001"
+    volumes:
+      - ./out:/app/out
+      - /home/enr1c0/project:/home/docgen/project
+      - /home/enr1c0/.config/gh:/home/docgen/.config/gh:ro
+      - /home/enr1c0/.gitconfig:/home/docgen/.gitconfig:ro
