@@ -21,14 +21,16 @@ type Generator struct {
 }
 
 type Request struct {
-	Proposal    string
-	Meta        map[string]interface{}
-	Stack       string
-	Tier        string
-	Visibility  string
-	GithubOwner string
-	PreparedBy  string
-	Reporter    progress.Reporter
+	Proposal        string
+	Meta            map[string]interface{}
+	Stack           string
+	Tier            string
+	Visibility      string
+	AutomationLevel string
+	DeployMode      string
+	GithubOwner     string
+	PreparedBy      string
+	Reporter        progress.Reporter
 }
 
 type File struct {
@@ -73,6 +75,18 @@ func (g *Generator) Generate(req Request) (Result, error) {
 	if req.Tier != "1" && req.Tier != "2" {
 		return Result{}, fmt.Errorf("tier must be 1 or 2")
 	}
+	if req.AutomationLevel == "" {
+		req.AutomationLevel = "repo_ci"
+	}
+	if req.AutomationLevel != "repo_only" && req.AutomationLevel != "repo_ci" && req.AutomationLevel != "repo_ci_cd" {
+		return Result{}, fmt.Errorf("automation_level must be repo_only, repo_ci, or repo_ci_cd")
+	}
+	if req.DeployMode == "" {
+		req.DeployMode = "none"
+	}
+	if req.DeployMode != "none" && req.DeployMode != "ssh_compose" {
+		return Result{}, fmt.Errorf("deploy_mode must be none or ssh_compose")
+	}
 	stackCfg, err := g.Stacks.Get(req.Stack)
 	if err != nil {
 		return Result{}, err
@@ -115,8 +129,12 @@ func (g *Generator) Generate(req Request) (Result, error) {
 	meta["health_endpoint"] = "/health"
 	meta["stack"] = req.Stack
 	meta["tier"] = req.Tier
+	meta["automation_level"] = req.AutomationLevel
+	meta["deploy_mode"] = req.DeployMode
 
 	values := buildValues(projectName, clientName, repoName, repoURL, imageName, stackCfg)
+	values["AUTOMATION_LEVEL"] = req.AutomationLevel
+	values["DEPLOY_MODE"] = req.DeployMode
 	values["STATUS_SLUG"] = "pre--development"
 	values["STATUS_COLOR"] = "blue"
 	values["CLONE_COMMAND"] = "git clone " + repoURL + "\ncd " + repoName
@@ -169,34 +187,46 @@ func (g *Generator) Generate(req Request) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-
-	dependabotPath := filepath.Join("github/dependabot", req.Stack+".yml")
-	files, err = g.addDeterministic(files, dependabotPath, ".github/dependabot.yml", values)
+	files, err = g.addDeterministic(files, "automation/automation.contract.yaml", "automation.contract.yaml", values)
+	if err != nil {
+		return Result{}, err
+	}
+	files, err = g.addDeterministic(files, "automation/AUTOMATION.md", "docs/AUTOMATION.md", values)
 	if err != nil {
 		return Result{}, err
 	}
 
-	ciPath := filepath.Join("github/workflows", req.Stack, "tier"+req.Tier, "ci.yml")
-	files, err = g.addDeterministic(files, ciPath, ".github/workflows/ci.yml", values)
-	if err != nil {
-		return Result{}, err
-	}
-
-	workflowFiles := []string{"release.yml", "deploy-staging.yml", "deploy-production.yml"}
-	for _, wf := range workflowFiles {
-		path := filepath.Join("github/workflows", req.Stack, wf)
-		files, err = g.addDeterministic(files, path, filepath.Join(".github/workflows", wf), values)
+	if req.AutomationLevel != "repo_only" {
+		dependabotPath := filepath.Join("github/dependabot", req.Stack+".yml")
+		files, err = g.addDeterministic(files, dependabotPath, ".github/dependabot.yml", values)
 		if err != nil {
 			return Result{}, err
 		}
-	}
 
-	aiWorkflowFiles := []string{"ai-pr-summary.yml", "ai-ci-explainer.yml"}
-	for _, wf := range aiWorkflowFiles {
-		path := filepath.Join("github/workflows", wf)
-		files, err = g.addDeterministic(files, path, filepath.Join(".github/workflows", wf), values)
+		ciPath := filepath.Join("github/workflows", req.Stack, "tier"+req.Tier, "ci.yml")
+		files, err = g.addDeterministic(files, ciPath, ".github/workflows/ci.yml", values)
 		if err != nil {
 			return Result{}, err
+		}
+
+		aiWorkflowFiles := []string{"ai-pr-summary.yml", "ai-ci-explainer.yml"}
+		for _, wf := range aiWorkflowFiles {
+			path := filepath.Join("github/workflows", wf)
+			files, err = g.addDeterministic(files, path, filepath.Join(".github/workflows", wf), values)
+			if err != nil {
+				return Result{}, err
+			}
+		}
+	}
+
+	if req.AutomationLevel == "repo_ci_cd" && req.DeployMode == "ssh_compose" {
+		workflowFiles := []string{"release.yml", "deploy-staging.yml", "deploy-production.yml"}
+		for _, wf := range workflowFiles {
+			path := filepath.Join("github/workflows", req.Stack, wf)
+			files, err = g.addDeterministic(files, path, filepath.Join(".github/workflows", wf), values)
+			if err != nil {
+				return Result{}, err
+			}
 		}
 	}
 

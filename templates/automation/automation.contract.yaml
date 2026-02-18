@@ -1,0 +1,30 @@
+version: 1
+
+project:
+  name: {{SERVICE_NAME}}
+
+automation_level: {{AUTOMATION_LEVEL}}
+
+deploy:
+  mode: {{DEPLOY_MODE}}
+
+ci:
+  lint:
+    command: "{{LINT_CMD}}"
+  test:
+    command: "{{TEST_CMD}}"
+  build:
+    command: "{{BUILD_CMD}}"
+  security:
+    command: "{{DEP_AUDIT_CMD}}"
+
+artifact:
+  type: docker
+  image: {{IMAGE_NAME}}
+  tag_strategy: sha
+
+policies:
+  default_branch: main
+  require_pr_for_main: true
+  require_approval_for_prod: true
+  allow_auto_deploy_prod: false

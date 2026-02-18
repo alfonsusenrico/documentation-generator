@@ -56,11 +56,13 @@ type proposalDetailResp struct {
 }
 
 type initReq struct {
-	ProposalID string                 `json:"proposal_id"`
-	Visibility string                 `json:"visibility"`
-	Stack      string                 `json:"stack"`
-	Tier       string                 `json:"tier"`
-	Meta       map[string]interface{} `json:"meta"`
+	ProposalID      string                 `json:"proposal_id"`
+	Visibility      string                 `json:"visibility"`
+	Stack           string                 `json:"stack"`
+	Tier            string                 `json:"tier"`
+	AutomationLevel string                 `json:"automation_level"`
+	DeployMode      string                 `json:"deploy_mode"`
+	Meta            map[string]interface{} `json:"meta"`
 }
 
 type initResp struct {
@@ -590,6 +592,25 @@ func (s *Server) normalizeInitRequest(req *initReq) error {
 		return apiError{Status: http.StatusBadRequest, Message: "visibility must be public or private"}
 	}
 
+	req.AutomationLevel = strings.ToLower(strings.TrimSpace(req.AutomationLevel))
+	if req.AutomationLevel == "" {
+		req.AutomationLevel = "repo_ci"
+	}
+	if req.AutomationLevel != "repo_only" && req.AutomationLevel != "repo_ci" && req.AutomationLevel != "repo_ci_cd" {
+		return apiError{Status: http.StatusBadRequest, Message: "automation_level must be repo_only, repo_ci, or repo_ci_cd"}
+	}
+
+	req.DeployMode = strings.ToLower(strings.TrimSpace(req.DeployMode))
+	if req.DeployMode == "" {
+		req.DeployMode = "none"
+	}
+	if req.DeployMode != "none" && req.DeployMode != "ssh_compose" {
+		return apiError{Status: http.StatusBadRequest, Message: "deploy_mode must be none or ssh_compose"}
+	}
+	if req.AutomationLevel != "repo_ci_cd" && req.DeployMode != "none" {
+		return apiError{Status: http.StatusBadRequest, Message: "deploy_mode requires automation_level=repo_ci_cd"}
+	}
+
 	if req.Meta == nil {
 		req.Meta = map[string]interface{}{}
 	}
@@ -630,14 +651,16 @@ func (s *Server) initProject(req initReq, reporter progress.Reporter) (initResp,
 	}
 
 	result, err := s.scaffold.Generate(scaffold.Request{
-		Proposal:    proposalMD,
-		Meta:        req.Meta,
-		Stack:       req.Stack,
-		Tier:        req.Tier,
-		Visibility:  req.Visibility,
-		GithubOwner: owner,
-		PreparedBy:  s.cfg.PreparedBy,
-		Reporter:    reporter,
+		Proposal:        proposalMD,
+		Meta:            req.Meta,
+		Stack:           req.Stack,
+		Tier:            req.Tier,
+		Visibility:      req.Visibility,
+		AutomationLevel: req.AutomationLevel,
+		DeployMode:      req.DeployMode,
+		GithubOwner:     owner,
+		PreparedBy:      s.cfg.PreparedBy,
+		Reporter:        reporter,
 	})
 	if err != nil {
 		return initResp{}, apiError{Status: http.StatusBadRequest, Message: err.Error()}
