@@ -129,36 +129,12 @@
             <div class="badge">Requires proposal</div>
           </div>
 
-          <div class="section">
-            <div class="section-title">Stack (required)</div>
-            <div class="choice-grid">
-              <label class="choice-card">
-                <input type="radio" name="stack" value="python" />
-                <div class="choice-title">Python</div>
-                <div class="choice-desc">Primary stack. Ruff + mypy + pytest.</div>
-              </label>
-              <label class="choice-card">
-                <input type="radio" name="stack" value="node" />
-                <div class="choice-title">Node</div>
-                <div class="choice-desc">Secondary stack. npm + typecheck.</div>
-              </label>
-            </div>
-          </div>
+          <input type="hidden" id="stackDefault" value="python" />
+          <input type="hidden" id="tierDefault" value="1" />
 
-          <div class="section">
-            <div class="section-title">Tier (required)</div>
-            <div class="choice-grid">
-              <label class="choice-card">
-                <input type="radio" name="tier" value="1" />
-                <div class="choice-title">Tier 1</div>
-                <div class="choice-desc">CI gates, artifacts, staged deploys, rollback.</div>
-              </label>
-              <label class="choice-card">
-                <input type="radio" name="tier" value="2" />
-                <div class="choice-title">Tier 2</div>
-                <div class="choice-desc">Adds integration tests, migrations, alerts.</div>
-              </label>
-            </div>
+          <div class="section compact-note">
+            <div class="section-title">Execution Profile</div>
+            <p class="muted">Stack & tier selection disederhanakan untuk sekarang. Default internal: <strong>python / tier 1</strong>.</p>
           </div>
 
           <div class="section">

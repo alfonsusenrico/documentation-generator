@@ -74,10 +74,10 @@ const getVisibility = () =>
   document.querySelector('input[name="visibility"]:checked')?.value || "private";
 
 const getStack = () =>
-  document.querySelector('input[name="stack"]:checked')?.value || "";
+  $("stackDefault")?.value || "python";
 
 const getTier = () =>
-  document.querySelector('input[name="tier"]:checked')?.value || "";
+  $("tierDefault")?.value || "1";
 
 const getAutomationLevel = () =>
   document.querySelector('input[name="automationLevel"]:checked')?.value || "repo_ci";
