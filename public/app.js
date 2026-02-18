@@ -79,6 +79,15 @@ const getStack = () =>
 const getTier = () =>
   document.querySelector('input[name="tier"]:checked')?.value || "";
 
+const getAutomationLevel = () =>
+  document.querySelector('input[name="automationLevel"]:checked')?.value || "repo_ci";
+
+const getDeployMode = () =>
+  document.querySelector('input[name="deployMode"]:checked')?.value || "none";
+
+const getArtifactType = () =>
+  document.querySelector('input[name="artifactType"]:checked')?.value || "docker";
+
 const saveDraft = () =>
   localStorage.setItem(
     LS_KEY,
@@ -90,6 +99,9 @@ const saveDraft = () =>
       visibility: getVisibility(),
       stack: getStack(),
       tier: getTier(),
+      automationLevel: getAutomationLevel(),
+      deployMode: getDeployMode(),
+      artifactType: getArtifactType(),
     })
   );
 
@@ -110,6 +122,18 @@ const loadDraft = () => {
     }
     if (d.tier != null) {
       const r = document.querySelector(`input[name="tier"][value="${d.tier}"]`);
+      if (r) r.checked = true;
+    }
+    if (d.automationLevel != null) {
+      const r = document.querySelector(`input[name="automationLevel"][value="${d.automationLevel}"]`);
+      if (r) r.checked = true;
+    }
+    if (d.deployMode != null) {
+      const r = document.querySelector(`input[name="deployMode"][value="${d.deployMode}"]`);
+      if (r) r.checked = true;
+    }
+    if (d.artifactType != null) {
+      const r = document.querySelector(`input[name="artifactType"][value="${d.artifactType}"]`);
       if (r) r.checked = true;
     }
   } catch {}
@@ -318,6 +342,39 @@ document.querySelectorAll('input[name="tier"]').forEach((el) => {
     updateInitState();
   };
 });
+document.querySelectorAll('input[name="automationLevel"]').forEach((el) => {
+  el.onchange = () => {
+    syncAutomationControls();
+    saveDraft();
+    updateInitState();
+  };
+});
+document.querySelectorAll('input[name="deployMode"]').forEach((el) => {
+  el.onchange = () => {
+    syncAutomationControls();
+    saveDraft();
+    updateInitState();
+  };
+});
+document.querySelectorAll('input[name="artifactType"]').forEach((el) => {
+  el.onchange = () => {
+    saveDraft();
+    updateInitState();
+  };
+});
+
+const syncAutomationControls = () => {
+  const level = getAutomationLevel();
+  const deploySsh = document.querySelector('input[name="deployMode"][value="ssh_compose"]');
+  const deployNone = document.querySelector('input[name="deployMode"][value="none"]');
+  if (!deploySsh || !deployNone) return;
+
+  const allowDeploy = level === "repo_ci_cd";
+  deploySsh.disabled = !allowDeploy;
+  if (!allowDeploy) {
+    deployNone.checked = true;
+  }
+};
 
 const updateInitState = () => {
   $("initProject").disabled = !last.id || dirty || !getStack() || !getTier();
@@ -328,6 +385,17 @@ $("clear").onclick = () => {
   $("clientOwner").value = "";
   $("plan").value = "";
   $("proposalSelect").value = "";
+  const defaults = [
+    ['visibility','private'],
+    ['automationLevel','repo_ci'],
+    ['deployMode','none'],
+    ['artifactType','docker'],
+  ];
+  defaults.forEach(([name, value]) => {
+    const el = document.querySelector(`input[name="${name}"][value="${value}"]`);
+    if (el) el.checked = true;
+  });
+  syncAutomationControls();
   setStatus("Cleared.");
   render("");
   last = { id: "", mdUrl: "", pdfUrl: "", markdown: "", pdfReady: false };
@@ -539,6 +607,9 @@ $("initProject").onclick = async () => {
   if (clientOwner) meta.client_or_owner = clientOwner;
 
   const visibility = getVisibility();
+  const automationLevel = getAutomationLevel();
+  const deployMode = getDeployMode();
+  const artifactType = getArtifactType();
   const initToken = $("initToken").value.trim();
 
   setStatus("Initiating project...");
@@ -558,6 +629,9 @@ $("initProject").onclick = async () => {
         visibility,
         stack,
         tier,
+        automation_level: automationLevel,
+        deploy_mode: deployMode,
+        artifact_type: artifactType,
         meta,
       }),
     });
@@ -605,6 +679,7 @@ previewEl.addEventListener("blur", () => {
 });
 
 loadDraft();
+syncAutomationControls();
 setTab("preview");
 last.id = localStorage.getItem(LAST_ID_KEY) || "";
 setEditable(false);

@@ -161,6 +161,65 @@
             </div>
           </div>
 
+          <div class="section">
+            <div class="section-title">Automation level</div>
+            <div class="choice-grid">
+              <label class="choice-card">
+                <input type="radio" name="automationLevel" value="repo_only" />
+                <div class="choice-title">Repo Only</div>
+                <div class="choice-desc">Scaffold + docs only, no CI/CD workflows.</div>
+              </label>
+              <label class="choice-card">
+                <input type="radio" name="automationLevel" value="repo_ci" checked />
+                <div class="choice-title">Repo + CI</div>
+                <div class="choice-desc">Generate CI workflows, no deploy workflows.</div>
+              </label>
+              <label class="choice-card">
+                <input type="radio" name="automationLevel" value="repo_ci_cd" />
+                <div class="choice-title">Repo + CI/CD</div>
+                <div class="choice-desc">Generate CI + deploy workflows (manual-first).</div>
+              </label>
+            </div>
+          </div>
+
+          <div class="grid two">
+            <label class="field">
+              <span>Deploy mode</span>
+              <div class="segmented">
+                <label class="segmented-item">
+                  <input type="radio" name="deployMode" value="none" checked />
+                  <span>None</span>
+                </label>
+                <label class="segmented-item">
+                  <input type="radio" name="deployMode" value="ssh_compose" />
+                  <span>SSH Compose</span>
+                </label>
+              </div>
+            </label>
+
+            <label class="field">
+              <span>Artifact type</span>
+              <div class="segmented">
+                <label class="segmented-item">
+                  <input type="radio" name="artifactType" value="docker" checked />
+                  <span>Docker</span>
+                </label>
+                <label class="segmented-item">
+                  <input type="radio" name="artifactType" value="binary" />
+                  <span>Binary</span>
+                </label>
+                <label class="segmented-item">
+                  <input type="radio" name="artifactType" value="package" />
+                  <span>Package</span>
+                </label>
+                <label class="segmented-item">
+                  <input type="radio" name="artifactType" value="none" />
+                  <span>None</span>
+                </label>
+              </div>
+            </label>
+          </div>
+
           <div class="grid two">
             <label class="field">
               <span>Repo visibility</span>
