@@ -134,11 +134,12 @@
 
           <div class="section compact-note">
             <div class="section-title">Execution Profile</div>
-            <p class="muted">Stack & tier selection disederhanakan untuk sekarang. Default internal: <strong>python / tier 1</strong>.</p>
+            <p class="muted">Stack and tier are currently fixed to <strong>Python / Tier 1</strong> for a stable baseline.</p>
           </div>
 
           <div class="section">
-            <div class="section-title">Automation level</div>
+            <div class="section-title">Automation Level</div>
+            <p class="section-hint">Select how much CI/CD automation should be scaffolded for this repository.</p>
             <div class="choice-grid">
               <label class="choice-card">
                 <input type="radio" name="automationLevel" value="repo_only" />
@@ -158,62 +159,72 @@
             </div>
           </div>
 
-          <div class="grid two">
-            <label class="field">
-              <span>Deploy mode</span>
-              <div class="segmented">
-                <label class="segmented-item">
-                  <input type="radio" name="deployMode" value="none" checked />
-                  <span>None</span>
-                </label>
-                <label class="segmented-item">
-                  <input type="radio" name="deployMode" value="ssh_compose" />
-                  <span>SSH Compose</span>
-                </label>
-              </div>
-            </label>
+          <div class="section">
+            <div class="section-title">Delivery Settings</div>
+            <div class="grid two init-grid">
+              <label class="field field-card">
+                <span>Deploy mode</span>
+                <p class="hint">Deploy options unlock when <strong>Repo + CI/CD</strong> is selected.</p>
+                <div class="segmented">
+                  <label class="segmented-item">
+                    <input type="radio" name="deployMode" value="none" checked />
+                    <span>None</span>
+                  </label>
+                  <label class="segmented-item">
+                    <input type="radio" name="deployMode" value="ssh_compose" />
+                    <span>SSH Compose</span>
+                  </label>
+                </div>
+              </label>
 
-            <label class="field">
-              <span>Artifact type</span>
-              <div class="segmented">
-                <label class="segmented-item">
-                  <input type="radio" name="artifactType" value="docker" checked />
-                  <span>Docker</span>
-                </label>
-                <label class="segmented-item">
-                  <input type="radio" name="artifactType" value="binary" />
-                  <span>Binary</span>
-                </label>
-                <label class="segmented-item">
-                  <input type="radio" name="artifactType" value="package" />
-                  <span>Package</span>
-                </label>
-                <label class="segmented-item">
-                  <input type="radio" name="artifactType" value="none" />
-                  <span>None</span>
-                </label>
-              </div>
-            </label>
+              <label class="field field-card">
+                <span>Artifact type</span>
+                <p class="hint">Defines the primary artifact referenced in generated workflows.</p>
+                <div class="segmented">
+                  <label class="segmented-item">
+                    <input type="radio" name="artifactType" value="docker" checked />
+                    <span>Docker</span>
+                  </label>
+                  <label class="segmented-item">
+                    <input type="radio" name="artifactType" value="binary" />
+                    <span>Binary</span>
+                  </label>
+                  <label class="segmented-item">
+                    <input type="radio" name="artifactType" value="package" />
+                    <span>Package</span>
+                  </label>
+                  <label class="segmented-item">
+                    <input type="radio" name="artifactType" value="none" />
+                    <span>None</span>
+                  </label>
+                </div>
+              </label>
+            </div>
           </div>
 
-          <div class="grid two">
-            <label class="field">
-              <span>Repo visibility</span>
-              <div class="segmented">
-                <label class="segmented-item">
-                  <input type="radio" name="visibility" value="private" checked />
-                  <span>Private</span>
-                </label>
-                <label class="segmented-item">
-                  <input type="radio" name="visibility" value="public" />
-                  <span>Public</span>
-                </label>
-              </div>
-            </label>
-            <label class="field">
-              <span>Init token (optional)</span>
-              <input id="initToken" placeholder="INIT_TOKEN if required" />
-            </label>
+          <div class="section">
+            <div class="section-title">Repository Access</div>
+            <div class="grid two init-grid">
+              <label class="field field-card">
+                <span>Repo visibility</span>
+                <p class="hint">Choose whether the new GitHub repository is private or public.</p>
+                <div class="segmented">
+                  <label class="segmented-item">
+                    <input type="radio" name="visibility" value="private" checked />
+                    <span>Private</span>
+                  </label>
+                  <label class="segmented-item">
+                    <input type="radio" name="visibility" value="public" />
+                    <span>Public</span>
+                  </label>
+                </div>
+              </label>
+              <label class="field field-card">
+                <span>Init token (optional)</span>
+                <p class="hint">Only needed if the server enforces token-protected init requests.</p>
+                <input id="initToken" placeholder="INIT_TOKEN if required" />
+              </label>
+            </div>
           </div>
 
           <div class="actions">
