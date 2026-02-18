@@ -62,8 +62,8 @@
 |------:|--------------|-------------|
 | Discovery | {{DISCOVERY_DELIVERABLE}} | {{DISCOVERY_DATE}} |
 | MVP | {{MVP_DELIVERABLE}} | {{MVP_DATE}} |
-| Beta | {{BETA_DELIVERABLE}} | {{BETA_DATE}} |
-| Production | {{PROD_DELIVERABLE}} | {{PROD_DATE}} |
+| Post-MVP (Optional) | {{BETA_DELIVERABLE}} | {{BETA_DATE}} |
+| Production (Optional) | {{PROD_DELIVERABLE}} | {{PROD_DATE}} |
 
 ## 10) Cost Estimate
 **Build (one-time):** {{BUILD_COST}}  
