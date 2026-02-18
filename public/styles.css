@@ -593,9 +593,9 @@ button:focus-visible {
 }
 
 .segmented {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: stretch;
-  flex-wrap: wrap;
   width: 100%;
   gap: 6px;
   padding: 6px;
@@ -607,15 +607,18 @@ button:focus-visible {
 .segmented-item {
   position: relative;
   display: inline-flex;
-  flex: 1 1 calc(50% - 6px);
   justify-content: center;
   align-items: center;
   gap: 6px;
+  min-width: 0;
   min-height: 34px;
   padding: 6px 12px;
   border-radius: 10px;
   cursor: pointer;
   font-size: 13px;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
   color: var(--muted);
   transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -763,8 +766,8 @@ button:focus-visible {
 }
 
 @media (max-width: 420px) {
-  .segmented-item {
-    flex-basis: 100%;
+  .segmented {
+    grid-template-columns: 1fr;
   }
 }
 
