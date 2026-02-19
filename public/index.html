@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>DocGen - Proposal Generator</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -71,7 +72,6 @@
               <p class="muted">Edit the preview directly. Save to persist and update PDF.</p>
             </div>
             <div class="panel-actions">
-              <button id="saveEdits" class="accent" disabled>Save edits</button>
               <div class="tabs">
                 <button class="tab active" id="tabPreview" type="button">Preview</button>
                 <button class="tab" id="tabRaw" type="button">Raw</button>
@@ -101,6 +101,10 @@
             </div>
             <div id="preview" class="md preview" contenteditable="false" data-placeholder="Generate a proposal to start editing."></div>
             <pre id="raw" class="raw" style="display:none;"></pre>
+          </div>
+
+          <div class="output-actions">
+            <button id="saveEdits" class="accent" disabled>Save edits</button>
           </div>
         </section>
 

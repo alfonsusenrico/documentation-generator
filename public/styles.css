@@ -327,6 +327,16 @@ button:focus-visible {
   margin-bottom: 12px;
 }
 
+.output-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.output-actions #saveEdits {
+  min-width: 140px;
+}
+
 .output {
   border-radius: 18px;
   border: 1px solid var(--border);
